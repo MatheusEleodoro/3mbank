@@ -1,0 +1,481 @@
+openapi: 3.0.0
+info:
+  title: 3m Auth Service API
+  version: 1.0.0
+  description: |-
+    **English:**
+    The **3m Auth Service** is a robust and secure microservice, developed with **Spring Boot**, designed to manage the **authentication and authorization of users and client applications**.
+    It utilizes **JWT (JSON Web Tokens)** for authentication and follows the **OAuth2** standard for authorization, ensuring security in environments with multiple microservices.
+
+    Key functionalities include:
+    - User registration with strong password validation.
+    - JWT-based login (providing accessToken and refreshToken).
+    - Token refresh mechanism.
+    - Logout functionality with token invalidation.
+    - OAuth2 client registration (requires ADMIN role).
+    - OAuth2 client authentication via the `client_credentials` grant type.
+
+    **Português:**
+    O **3m Auth Service** é um microsserviço robusto e seguro, desenvolvido com **Spring Boot**, projetado para gerenciar a **autenticação e autorização de usuários e aplicações cliente**.
+    Ele utiliza **JWT (JSON Web Tokens)** para autenticação e segue o padrão **OAuth2** para autorização, garantindo segurança em ambientes com múltiplos microsserviços.
+
+    Principais funcionalidades incluem:
+    - Registro de usuário com validação de senha forte.
+    - Login baseado em JWT (fornecendo accessToken e refreshToken).
+    - Mecanismo de atualização de token (refresh).
+    - Funcionalidade de logout com invalidação de token.
+    - Registro de cliente OAuth2 (requer perfil ADMIN).
+    - Autenticação de cliente OAuth2 através do grant type `client_credentials`.
+servers:
+  - url: http://localhost:8080
+    description: Development Server / Servidor de Desenvolvimento
+tags:
+  - name: Authentication
+    description: User authentication, token management, and session control. / Autenticação de usuário, gerenciamento de tokens e controle de sessão.
+  - name: Registration
+    description: Endpoints for registering new users and OAuth2 clients. / Endpoints para registrar novos usuários e clientes OAuth2.
+  - name: OAuth2
+    description: OAuth2 client authentication and token operations. / Autenticação de cliente OAuth2 e operações de token.
+
+paths:
+  /login:
+    post:
+      tags:
+        - Authentication
+      summary: User login / Login de usuário
+      description: Authenticates the user and returns JWT (access and refresh tokens) if credentials are valid. / Autentica o usuário e retorna JWTs (tokens de acesso e de atualização) se as credenciais forem válidas.
+      operationId: loginUser
+      requestBody:
+        description: User credentials for login. / Credenciais do usuário para login.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '201':
+          description: Login successful, tokens created. / Login bem-sucedido, tokens criados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid request format, validation error, or invalid credentials structure. / Formato de requisição inválido, erro de validação ou estrutura de credenciais inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid username or password. / Não autorizado - Nome de usuário ou senha inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh JWT access token / Atualizar token de acesso JWT
+      description: Obtains a new JWT access token using a valid refresh token. / Obtém um novo token de acesso JWT usando um token de atualização válido.
+      operationId: refreshToken
+      requestBody:
+        description: Refresh token used to obtain a new access token. / Token de atualização utilizado para obter um novo token de acesso.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '201':
+          description: Access token refreshed successfully. / Token de acesso atualizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse' # Returns the same structure as login, with new tokens
+        '400':
+          description: Invalid refresh token format or request. / Formato de token de atualização ou requisição inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Refresh token is invalid, expired, or revoked. / Não autorizado - O token de atualização é inválido, expirou ou foi revogado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /logout:
+    put:
+      tags:
+        - Authentication
+      summary: User logout / Logout de usuário
+      description: Invalidates the user's current session/token, effectively logging them out. Requires authentication via Bearer token. / Invalida a sessão/token atual do usuário, efetivamente fazendo logout. Requer autenticação via token Bearer.
+      operationId: logoutUser
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Logout successful, token invalidated. / Logout bem-sucedido, token invalidado.
+        '401':
+          description: Unauthorized - No valid token provided or token already invalid. / Não autorizado - Nenhum token válido fornecido ou token já inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /register/user:
+    post:
+      tags:
+        - Registration
+      summary: Register a new user / Registrar um novo usuário
+      description: Creates a new user account with the provided details. / Cria uma nova conta de usuário com os detalhes fornecidos.
+      operationId: registerUser
+      requestBody:
+        description: Request object containing details for registering a new user. / Objeto de requisição contendo os detalhes para registrar um novo usuário.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserRequest'
+      responses:
+        '200': # Based on Spring MVC default for void return type. Consider 201 or 202 for creation.
+          description: User registration request accepted. Further processing might occur (e.g., email verification). / Requisição de registro de usuário aceita. Processamento adicional pode ocorrer (ex':' verificação de e-mail).
+        '400':
+          description: Invalid user data provided (e.g., validation error, malformed request, invalid enum value for role). / Dados de usuário inválidos fornecidos (ex':' erro de validação, requisição malformada, valor de enum inválido para role).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - A user with the provided email already exists. / Conflito - Um usuário com o e-mail fornecido já existe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /register/client:
+    post:
+      tags:
+        - Registration
+      summary: Register a new OAuth2 client / Registrar um novo cliente OAuth2
+      description: Registers a new OAuth2 client application. This operation requires ADMIN privileges and authentication via Bearer token. / Registra uma nova aplicação cliente OAuth2. Esta operação requer privilégios de ADMIN e autenticação via token Bearer.
+      operationId: registerClient
+      security:
+        - bearerAuth: [] # Indicates authentication is required. Specific role (ADMIN) check is handled by application logic.
+      requestBody:
+        description: Client registration details including a unique client ID and desired scopes. / Detalhes de registro do cliente, incluindo um ID de cliente único e escopos desejados.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterClientRequest'
+      responses:
+        '201':
+          description: OAuth2 client registered successfully. Returns client ID and generated client secret. The client secret should be stored securely. / Cliente OAuth2 registrado com sucesso. Retorna o ID do cliente e o segredo do cliente gerado. O segredo do cliente deve ser armazenado de forma segura.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterClientResponse'
+        '400':
+          description: Invalid client data provided (e.g., validation error, malformed request, invalid enum value for scope). / Dados de cliente inválidos fornecidos (ex':' erro de validação, requisição malformada, valor de enum inválido para escopo).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Authentication token is missing or invalid. / Não autorizado - Token de autenticação ausente ou inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Authenticated user does not have ADMIN privileges. / Proibido - Usuário autenticado não possui privilégios de ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - A client with the provided ID already exists. / Conflito - Um cliente com o ID fornecido já existe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /login/client:
+    post:
+      tags:
+        - OAuth2
+      summary: Obtain an OAuth2 token using client credentials / Obter um token OAuth2 usando credenciais de cliente
+      description: Allows a registered client application to obtain an access token using its credentials (client ID and client secret) via the `client_credentials` grant type. This is typically used for machine-to-machine authentication. / Permite que uma aplicação cliente registrada obtenha um token de acesso usando suas credenciais (ID do cliente e segredo do cliente) através do tipo de concessão `client_credentials`. Isso é tipicamente usado para autenticação máquina-a-máquina.
+      operationId: clientLogin
+      requestBody:
+        description: Client credentials grant request. The request must be `application/x-www-form-urlencoded`. / Requisição de concessão de credenciais de cliente. A requisição deve ser `application/x-www-form-urlencoded`.
+        required: true
+        content:
+          application/x-www-form-urlencoded: # Standard for OAuth2 token endpoint
+            schema:
+              $ref: '#/components/schemas/ClientCredentialsRequest'
+      responses:
+        '200':
+          description: Client authentication successful, token issued. / Autenticação de cliente bem-sucedida, token emitido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientTokenResponse'
+        '400':
+          description: Invalid request (e.g., missing parameters, unsupported grant type, invalid client). Refer to OAuthError schema for details. / Requisição inválida (ex':' parâmetros ausentes, tipo de concessão não suportado, cliente inválido). Consulte o esquema OAuthError para detalhes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthError' # Standard OAuth2 error response
+        '401':
+          description: Unauthorized - Client authentication failed (e.g., invalid client_id or client_secret). Refer to OAuthError schema for details. / Não autorizado - Falha na autenticação do cliente (ex':' client_id ou client_secret inválido). Consulte o esquema OAuthError para detalhes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthError'
+
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      description: Login object containing username (email) and a strong password. / Objeto de login contendo nome de usuário (email) e uma senha forte.
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: User's email address, used as the username. / Endereço de e-mail do usuário, usado como nome de usuário.
+          example: user@3mbank.com.br
+        password:
+          type: string
+          format: password
+          description: Strong password. Must be at least 12 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character (e.g., @#$%^&+=!). / Senha forte. Deve ter pelo menos 12 caracteres e incluir pelo menos uma letra maiúscula, uma letra minúscula, um dígito e um caractere especial (ex':' @#$%^&+=!).
+          example: Example&123Pwd
+
+    LoginResponse:
+      type: object
+      description: Response object containing JWT access and refresh tokens, token type, and expiration time after successful user login. / Objeto de resposta contendo os tokens JWT de acesso e de atualização, tipo de token e tempo de expiração após o login bem-sucedido do usuário.
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token used for authorizing subsequent requests. / Token de acesso JWT usado para autorizar requisições subsequentes.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        refreshToken:
+          type: string
+          description: JWT refresh token used to obtain a new access token when the current one expires. / Token de atualização JWT usado para obter um novo token de acesso quando o atual expirar.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYmNkZWZnIiwibmFtZSI6IlJlZnJlc2giLCJpYXQiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        tokenType:
+          type: string
+          description: Type of the token, typically "Bearer". / Tipo do token, geralmente "Bearer".
+          example: Bearer
+        expiresIn:
+          type: integer
+          format: int64
+          description: Access token expiration time in seconds from the time of issuance. / Tempo de expiração do token de acesso em segundos a partir do momento da emissão.
+          example: 3600
+
+    RefreshRequest:
+      type: object
+      description: Request object containing the refresh token needed to obtain a new access token. / Objeto de requisição contendo o token de atualização necessário para obter um novo token de acesso.
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: The refresh token that was previously issued to the user. / O token de atualização que foi emitido anteriormente para o usuário.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYmNkZWZnIiwibmFtZSI6IlJlZnJlc2giLCJpYXQiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+    RegisterUserRequest:
+      type: object
+      description: Request object for registering a new user in the digital bank. / Objeto de requisição para cadastro de um novo usuário no banco digital.
+      required:
+        - firstName
+        - lastName
+        - email
+        - password
+        - twoFactorEnabled
+        - roles
+      properties:
+        firstName:
+          type: string
+          description: User's first name. / Primeiro nome do usuário.
+          example: Matheus
+        lastName:
+          type: string
+          description: User's last name. / Sobrenome do usuário.
+          example: Eleodoro
+        email:
+          type: string
+          format: email
+          description: User's email address. Must be unique. / Endereço de e-mail do usuário. Deve ser único.
+          example: matheus@email.com
+        password:
+          type: string
+          format: password
+          description: User password. Must meet the defined strength requirements. / Senha do usuário. Deve atender aos requisitos de força definidos.
+          example: SenhaSegura123!
+        twoFactorEnabled:
+          type: boolean
+          description: Indicates if the user has enabled two-factor authentication. / Indica se o usuário habilitou a autenticação de dois fatores.
+          example: true
+        roles:
+          type: array
+          description: List of permission roles assigned to the user. At least one role is required. / Lista de papéis de permissão atribuídos ao usuário. Pelo menos um papel é obrigatório.
+          items:
+            $ref: '#/components/schemas/Role'
+          minItems: 1 # Due to @NotEmpty annotation in backend
+          example: ["USER"]
+
+    Role:
+      type: string
+      description: Defines the permission level or role of a user within the system. / Define o nível de permissão ou o papel de um usuário dentro do sistema.
+      enum: # Actual values depend on com.threembank.domain.valueobject.Role
+        - USER
+        - ADMIN
+        - MANAGER # Example, add actual roles from your domain
+      example: USER
+
+    RegisterClientRequest:
+      type: object
+      description: Request object to register a new OAuth2 client application. / Objeto de requisição para registrar uma nova aplicação cliente OAuth2.
+      required:
+        - clientId
+        - scopes
+      properties:
+        clientId:
+          type: string
+          description: The unique identifier for the client application. This ID will be used by the client to identify itself. / O identificador único para a aplicação cliente. Este ID será usado pelo cliente para se identificar.
+          example: my-awesome-app
+        scopes:
+          type: array
+          description: List of OAuth2 scopes requested by the client. Scopes define the extent of access. The list itself must not be null, but can be empty if no specific scopes are initially assigned. / Lista de escopos OAuth2 solicitados pelo cliente. Os escopos definem a extensão do acesso. A lista em si não deve ser nula, mas pode estar vazia se nenhum escopo específico for atribuído inicialmente.
+          items:
+            $ref: '#/components/schemas/Scope'
+          example: ["read_profile", "write_data"]
+
+    Scope:
+      type: string
+      description: Defines an OAuth2 scope, representing a permission that a client can request. / Define um escopo OAuth2, representando uma permissão que um cliente pode solicitar.
+      enum: # Actual values depend on com.threembank.domain.valueobject.Scope
+        - read_profile
+        - write_data
+        - read_accounts
+        - transfer_funds # Example, add actual scopes from your domain
+      example: read_profile
+
+    RegisterClientResponse:
+      type: object
+      description: Response after successfully registering an OAuth2 client. Contains the client ID and the generated client secret. / Resposta após registrar com sucesso um cliente OAuth2. Contém o ID do cliente e o segredo do cliente gerado.
+      properties:
+        clientId:
+          type: string
+          description: The registered client ID. / O ID do cliente registrado.
+          example: my-awesome-app
+        clientSecret:
+          type: string
+          description: The generated client secret. This secret must be stored securely by the client application and should not be shared. / O segredo do cliente gerado. Este segredo deve ser armazenado de forma segura pela aplicação cliente e não deve ser compartilhado.
+          example: aVeryStrongAndSecretClientSecretValue
+
+    Error:
+      type: object
+      description: Standard error response structure used across the API. / Estrutura padrão de resposta de erro usada em toda a API.
+      properties:
+        version:
+          type: string
+          description: API version or error schema version, indicating the structure of the error response. / Versão da API ou versão do esquema de erro, indicando a estrutura da resposta de erro.
+          example: "1.0.0"
+        origem:
+          type: string
+          description: Source of the error, often indicating the class or component where the error originated (e.g., exception class name). / Origem do erro, frequentemente indicando a classe ou componente onde o erro se originou (ex':' nome da classe da exceção).
+          example: BasicValidationException
+        data:
+          description: Contains the error message(s) or detailed error data. This can be a single string, an array of strings (e.g., for validation errors), or a more complex structured object. / Contém a(s) mensagem(ns) de erro ou dados detalhados do erro. Pode ser uma única string, um array de strings (ex':' para erros de validação) ou um objeto estruturado mais complexo.
+          oneOf:
+            - type: string
+              description: A single error message. / Uma única mensagem de erro.
+              example: "Invalid credentials provided."
+            - type: array
+              description: A list of error messages, typically for multiple validation failures. / Uma lista de mensagens de erro, tipicamente para múltiplas falhas de validação.
+              items:
+                type: string
+              example: ["Field 'email' must not be empty.", "Password does not meet complexity requirements."]
+            - type: object # For more complex structured errors if applicable
+              description: A structured object containing detailed error information. / Um objeto estruturado contendo informações detalhadas do erro.
+              example: {"field": "email", "message": "must be a well-formed email address"}
+
+    ClientCredentialsRequest:
+      type: object
+      description: Request body for the OAuth2 client credentials grant type, used for machine-to-machine authentication. / Corpo da requisição para o tipo de concessão de credenciais de cliente OAuth2, usado para autenticação máquina-a-máquina.
+      required:
+        - grant_type
+        - client_id
+        - client_secret
+      properties:
+        grant_type:
+          type: string
+          description: OAuth2 grant type. Must be explicitly set to "client_credentials". / Tipo de concessão OAuth2. Deve ser explicitamente definido como "client_credentials".
+          enum: [client_credentials]
+          example: client_credentials
+        client_id:
+          type: string
+          description: The client ID obtained during client registration. / O ID do cliente obtido durante o registro do cliente.
+          example: my-awesome-app
+        client_secret:
+          type: string
+          description: The client secret obtained during client registration. / O segredo do cliente obtido durante o registro do cliente.
+          example: aVeryStrongAndSecretClientSecretValue
+        scope: # Optional
+          type: string
+          description: Optional space-separated list of scopes being requested. If not provided, the default scopes for the client may be used. / Lista opcional de escopos solicitados, separados por espaço. Se não fornecido, os escopos padrão para o cliente podem ser usados.
+          example: "read_profile write_data"
+
+    ClientTokenResponse:
+      type: object
+      description: Response containing the access token for an OAuth2 client after successful authentication using client credentials. / Resposta contendo o token de acesso para um cliente OAuth2 após autenticação bem-sucedida usando credenciais de cliente.
+      properties:
+        access_token:
+          type: string
+          description: JWT access token for the client application. / Token de acesso JWT para a aplicação cliente.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6InJlYWRfdXNlciIsImNsaWVudF9pZCI6ImFwcDEiLCJleHAiOjE2NzgzNzQwODB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        token_type:
+          type: string
+          description: Type of the token, typically "Bearer". / Tipo do token, geralmente "Bearer".
+          example: Bearer
+        expires_in:
+          type: integer
+          format: int32 # Note: LoginResponse uses int64 for expiresIn. Consider consistency.
+          description: Access token expiration time in seconds from the time of issuance. / Tempo de expiração do token de acesso em segundos a partir do momento da emissão.
+          example: 3600
+        scope:
+          type: string
+          description: Space-separated list of scopes granted to the access token. May be a subset of the requested scopes. / Lista de escopos concedidos ao token de acesso, separados por espaço. Pode ser um subconjunto dos escopos solicitados.
+          example: "read_profile write_data"
+
+    OAuthError: # Standard OAuth2 error response (RFC 6749, Section 5.2)
+      type: object
+      description: Standard OAuth2 error response format as defined in RFC 6749, Section 5.2. / Formato padrão de resposta de erro OAuth2 conforme definido na RFC 6749, Seção 5.2.
+      properties:
+        error:
+          type: string
+          description: A single ASCII [USASCII] error code (e.g., "invalid_request", "invalid_client"). / Um único código de erro ASCII [USASCII] (ex':' "invalid_request", "invalid_client").
+          example: invalid_request
+        error_description:
+          type: string
+          description: Human-readable ASCII [USASCII] text providing additional information about the error. Intended for the client developer. / Texto ASCII [USASCII] legível por humanos fornecendo informações adicionais sobre o erro. Destinado ao desenvolvedor do cliente.
+          example: The request is missing a required parameter.
+        error_uri:
+          type: string
+          format: uri
+          description: A URI identifying a human-readable web page with information about the error. Used to provide the client developer with more context. / Uma URI identificando uma página web legível por humanos com informações sobre o erro. Usada para fornecer ao desenvolvedor do cliente mais contexto.
+          example: https://tools.ietf.org/html/rfc6749#section-5.2
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token for authentication. The token should be provided in the Authorization header using the Bearer scheme':' `Authorization':' Bearer {token}`. / Token JWT Bearer para autenticação. O token deve ser fornecido no cabeçalho Authorization usando o esquema Bearer':' `Authorization':' Bearer {token}`.

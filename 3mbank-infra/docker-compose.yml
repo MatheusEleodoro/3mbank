@@ -1,0 +1,260 @@
+version: '3.8'
+services:
+  ## Proxy
+  traefik:
+    image: traefik:v2.9
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--log.level=INFO"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`3mbank.traefik.com`)"
+      - "traefik.http.routers.traefik.entrypoints=web"
+      - "traefik.http.routers.traefik.service=api@internal"
+    networks:
+      - 3mbank-network
+
+  ## Container Manager
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer/data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`3mbank.portainer.com`)"
+      - "traefik.http.routers.portainer.entrypoints=web"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    networks:
+      - 3mbank-network
+
+  ## Observability
+  prometheus:
+    image: prom/prometheus:v3.4.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/data:/var/lib/prometheus
+
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --enable-feature=exemplar-storage
+      - --web.enable-remote-write-receiver
+    ports:
+      - "9090:9090"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`3mbank.prometheus.com`)"
+      - "traefik.http.routers.prometheus.entrypoints=web"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+    networks:
+      - 3mbank-network
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: [
+      "--config.file=/etc/tempo.yaml"
+    ]
+    ports:
+      - "3200:3200"       # API HTTP para receber traces OTLP (porta padrão)
+      - "4317:4317"   # gRPC
+      - "4318:4318"   # HTTP
+    volumes:
+      - ./grafana/tempo/tempo.yaml:/etc/tempo.yaml
+      - ./grafana/tempo/data:/tmp/tempo
+    networks:
+      - 3mbank-network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./grafana/loki/loki-config.yaml:/etc/loki/loki-config.yaml
+      - ./grafana/loki/data:/var/lib/loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    environment:
+      - HOSTNAME=loki-service
+    networks:
+      - 3mbank-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/dashboard/data:/var/lib/grafana
+      - ./grafana/dashboard/datasources/grafana-datasource.yml:/etc/grafana/provisioning/datasources/grafana-datasource.yml
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`3mbank.dashboard.com`)"
+      - "traefik.http.routers.dashboard.entrypoints=web"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=3000"
+    networks:
+      - 3mbank-network
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+
+
+
+  ## Events
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - 3mbank-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      # Listeners (interno para containers + externo para host local)
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # Para dev/local: sem replicação de múltiplos brokers
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - 3mbank-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      - kafka
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kafka-ui.rule=Host(`3mbank.kafka-ui.com`)"
+      - "traefik.http.routers.kafka-ui.entrypoints=web"
+      - "traefik.http.services.kafka-ui.loadbalancer.server.port=8080"
+    networks:
+      - 3mbank-network
+
+  ## Databases
+  postgres-account:
+    image: postgres
+    container_name: postgres-account
+    restart: always
+    environment:
+      POSTGRES_DB: accountdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_account_data:/var/lib/postgresql/data
+    networks:
+      - 3mbank-network
+
+  postgres-transaction:
+    image: postgres
+    container_name: postgres-transaction
+    restart: always
+    environment:
+      POSTGRES_DB: transactiondb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_transaction_data:/var/lib/postgresql/data
+    networks:
+      - 3mbank-network
+
+  postgres-auth:
+    image: postgres
+    container_name: postgres-auth
+    user: "postgres"
+    restart: always
+    environment:
+      POSTGRES_DB: authdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - 3mbank-network
+
+  ## Cache
+  redis:
+    image: redis:8.2-m01-bookworm
+    container_name: redis_8.2
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - ./redis/data:/data
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "notice"]
+
+  ## Service Discovery
+  consul:
+    image: hashicorp/consul:1.21
+    container_name: consul
+    restart: always
+    command: agent -dev -client=0.0.0.0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./consul/data:/var/lib/consul/data
+      - ./consul/config:/var/lib/consul/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.consul.rule=Host(`3mbank.consul.com`)"
+      - "traefik.http.routers.consul.entrypoints=web"
+      - "traefik.http.services.consul.loadbalancer.server.port=8500"
+    networks:
+      - 3mbank-network
+
+networks:
+  3mbank-network:
+    driver: bridge
+
+volumes:
+  portainer_data:
+  consul_data:
+  prometheus_data:
+  grafana_data:
+  postgres_account_data:
+  postgres_transaction_data:
+  postgres_auth_data:
+  tempo-data:
+  redis_data:

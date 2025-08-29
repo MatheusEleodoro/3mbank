@@ -1,0 +1,39 @@
+# src/main/resources/application-dev.yml
+
+# --- Configurações de Desenvolvimento (dev) ---
+server:
+  port: 8080 # Porta padrão para desenvolvimento
+  ssl:
+    enabled: false # SSL desabilitado localmente
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # URL do servidor de autorização LOCAL
+          jwk-set-uri: http://localhost:8081/oauth2/jwks
+  cloud:
+    consul:
+      # Endereço do Consul em produção
+      host: 3mbank.consul.com
+      port: 80
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                # Permite qualquer origem para facilitar testes com frontends locais
+                allowedOrigins: "*"
+                allowedHeaders: "*"
+                exposedHeaders: "*"
+  data:
+    redis:
+      host: localhost
+      port: 6379
+## Nível de log mais detalhado para facilitar o debug
+#logging:
+#  level:
+#    org.springframework.cloud.gateway: DEBUG
+#    org.springframework.security: DEBUG
