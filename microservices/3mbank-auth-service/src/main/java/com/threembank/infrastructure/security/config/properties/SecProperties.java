@@ -13,7 +13,7 @@ import java.util.List;
 
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "services.security")
+@ConfigurationProperties(prefix = "configurations.security")
 public class SecProperties {
     private Cors cors = new Cors();
     private Jwt jwt = new Jwt();

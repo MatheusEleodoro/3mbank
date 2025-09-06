@@ -32,15 +32,17 @@ public class AccountRepositoryImpl implements AccountRepository {
     }
 
     @Override
-    public Optional<Account> findById(Long id) {
-        return repository.findById(id).map(accountMapper::toDto);
+    public Optional<Account> findById(UUID uuid,Long id) {
+        return repository.findOne(DynamicSpecification.where(DynamicFilter.<AccountEntity,UUID>toEquals(uuid, "userId")
+                        .and(DynamicFilter.toEquals(id, "number"))))
+                .map(accountMapper::toDomain);
     }
 
     @Override
     public Collection<Account> findByUser(UUID uuid) {
         return repository.findAll(DynamicSpecification.where(DynamicFilter.toEquals(uuid, "userId")))
                 .stream()
-                .map(accountMapper::toDto).toList();
+                .map(accountMapper::toDomain).toList();
     }
 
     @Override

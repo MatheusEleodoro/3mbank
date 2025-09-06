@@ -1,5 +1,6 @@
-package com.threembank.infrastructure.security;
+package com.threembank.core.security.converter;
 
+import com.threembank.core.security.model.User;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.AbstractAuthenticationToken;

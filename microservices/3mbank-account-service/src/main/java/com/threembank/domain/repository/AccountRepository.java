@@ -12,7 +12,7 @@ public interface
 AccountRepository {
     boolean exists(Account account);
 
-    Optional<Account> findById(Long id);
+    Optional<Account> findById(UUID uuid,Long id);
 
     Collection<Account> findByUser(UUID uuid);
 

@@ -1,9 +1,11 @@
 **/.idea/
 **/target/
 /**/.env
+.vscode
 /3mbank-infra/consul/
 /3mbank-infra/grafana/
 /3mbank-infra/portainer/
 /3mbank-infra/postgres/
 /3mbank-infra/prometheus/
 /3mbank-infra/redis/
+/3mbank-infra/vault/

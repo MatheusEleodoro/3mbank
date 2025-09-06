@@ -9,7 +9,7 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING,
         implementationName = "AccountMapperInterfaceImpl")
 public interface AccountMapper {
-    Account toDto(AccountEntity accountEntity);
+    Account toDomain(AccountEntity accountEntity);
     AccountEntity toEntity(Account account);
 
 }

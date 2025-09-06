@@ -1,4 +1,4 @@
-package com.threembank.infrastructure.security;
+package com.threembank.core.security.model;
 
 import org.springframework.security.core.GrantedAuthority;
 

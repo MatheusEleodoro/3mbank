@@ -1,26 +1,5 @@
-services:
-  port: ${SERV_PORT:8081}
-  context: ${SERV_CONTEXT:/}
-  connection:
-    database:
-      name: ${DB_DATABASE}
-      host: ${DB_HOST}
-      user: ${DB_USER}
-      psw : ${DB_PSW}
+configurations:
   security:
-    ssl:
-      enable:   ${SSL_ENABLE:false}
-      type:     ${SSL_TYPE:PKCS12}
-      store:    ${SSL_STORE:classpath:keystore.p12}
-      password: ${SSL_PASSWORD}
-      alias:    ${SSL_ALIAS}
-    cors:
-      allowed-origins:    ${CORS_ALLOWED_ORIGINS}
-      allowed-methods:    ${CORS_ALLOWED_METHODS}
-      allowed-headers:    ${CORS_ALLOWED_HEADERS}
-      exposed-headers:    ${CORS_EXPOSED_HEADERS}
-      allow-credentials:  ${CORS_ALLOW_CREDENTIALS}
-      max-age:            ${CORS_MAX_AGE}
     jwt:
       token:
         private-key: classpath:keys/private.key
@@ -28,72 +7,17 @@ services:
         expiration-at: ${JWT_EXPIRE_AT}
         expiration-rt: ${JWT_EXPIRE_RT}
 
-
 server:
-  port: ${services.port}
-  servlet:
-    context-path: ${services.context}
-  ssl:
-    enabled: ${services.security.ssl.enable}
-    key-store-type: ${services.security.ssl.type}
-    key-store: ${services.security.ssl.store}
-    key-store-password: ${services.security.ssl.password}
-    key-alias: ${services.security.ssl.alias}
-
+  port: 8081
 spring:
   application:
     name: '@project.artifactId@'
-
   profiles:
-    active: prod,doc
-  datasource:
-    url: jdbc:postgresql://${services.connection.database.host}/${services.connection.database.name}
-    username: ${services.connection.database.user}
-    password: ${services.connection.database.psw}
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+    active: dev,doc
+  config:
+    import: "optional:configserver:http://localhost:8888"
   cloud:
-    consul:
-      host: 3mbank.consul.com
-      port: 80
-      discovery:
-        tags: prometheus
-        register: true
-        prefer-ip-address: true
-        health-check-path: /actuator/health
-        health-check-interval: 10s
-        instance-id: ${spring.application.name}:${spring.cloud.client.ip-address}:${server.port}
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health, metrics, info,prometheus
-  endpoint:
-    prometheus:
-      access: unrestricted
-    health:
-      show-details: always
-  prometheus:
-    metrics:
-      export:
-        enabled: true
-  otlp:
-    tracing:
-      endpoint:  http://localhost:4318/v1/traces
-  tracing:
-    sampling:
-      probability: 1.0
-logging:
-  level:
-    root: INFO
-    org.springframework.web: INFO
-
-
-
-
+    config:
+      username: config-user
+      password: ${ConfigServerSecret}
+      fail-fast: true

@@ -1,8 +1,8 @@
 package com.threembank.interfaces.controller;
 
 import com.threembank.application.usecase.AccountUseCase;
+import com.threembank.core.security.model.User;
 import com.threembank.domain.valueobject.AccountStatus;
-import com.threembank.infrastructure.security.User;
 import com.threembank.interfaces.dto.AccountResponse;
 import com.threembank.interfaces.dto.CreateRequest;
 import com.threembank.interfaces.mapper.AccountMapper;
@@ -33,14 +33,14 @@ public class AccountController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AccountResponse> getUseCase(@PathVariable long id) {
-        var account = accountMapper.toResponse(useCase.get(id));
+    public ResponseEntity<AccountResponse> getAccount(@AuthenticationPrincipal User user , @PathVariable long id) {
+        var account = accountMapper.toResponse(useCase.get(user,id));
         return ResponseEntity.ok(account);
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<Void> updateStatus(@PathVariable long id, @RequestBody AccountStatus status) {
-        useCase.updateStatus(id,status);
+    public ResponseEntity<Void> updateStatus(@AuthenticationPrincipal User user,@PathVariable long id, @RequestBody AccountStatus status) {
+        useCase.updateStatus(user,id,status);
         return  ResponseEntity.noContent().build();
     }
 }

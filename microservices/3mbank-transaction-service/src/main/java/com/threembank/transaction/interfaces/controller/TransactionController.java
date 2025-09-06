@@ -4,6 +4,7 @@ import com.threembank.transaction.application.usecase.DepositUseCase;
 import com.threembank.transaction.application.usecase.WithdrawUseCase;
 import com.threembank.transaction.application.usecase.TransferUseCase;
 import com.threembank.transaction.application.usecase.TransactionHistoryUseCase;
+import com.threembank.transaction.infrastructure.client.AccountClient;
 import com.threembank.transaction.infrastructure.kafka.KafkaProducer;
 import com.threembank.transaction.infrastructure.kafka.TransactionEvent;
 import com.threembank.transaction.infrastructure.valueobjects.TransactionStatus;
@@ -12,6 +13,8 @@ import com.threembank.transaction.interfaces.dto.request.DepositRequest;
 import com.threembank.transaction.interfaces.dto.response.TransactionResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController

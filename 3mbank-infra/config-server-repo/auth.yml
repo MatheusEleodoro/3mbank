@@ -1,0 +1,14 @@
+configurations:
+  app:
+    name: auth
+    port: 8081
+    context: /
+server:
+  port: ${configurations.app.port}
+  servlet:
+    context-path: ${configurations.app.context}
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    com.threembank.interfaces.handler: INFO

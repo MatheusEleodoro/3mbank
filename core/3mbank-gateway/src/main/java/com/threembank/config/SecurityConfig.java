@@ -40,8 +40,8 @@ public class SecurityConfig {
                 .authorizeExchange(ex -> ex
                         .pathMatchers("/actuator/**").permitAll()
                         .pathMatchers("/actuator/prometheus").permitAll()
-                        .pathMatchers("/auth-service/**").permitAll()
-                        .anyExchange().authenticated())
+                        .pathMatchers("/auth/**").permitAll()
+                        .anyExchange().permitAll())
                 .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()))
                 .cors(Customizer.withDefaults());
     }

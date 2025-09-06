@@ -3,7 +3,6 @@ package com.threembank.domain.entity;
 import com.threembank.domain.validation.Validatable;
 import com.threembank.domain.valueobject.AccountStatus;
 import com.threembank.domain.valueobject.AccountType;
-import com.threembank.infrastructure.security.User;
 import com.threembank.shared.exception.BasicValidationException;
 import com.threembank.shared.message.ValidationMessage;
 import lombok.*;

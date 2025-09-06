@@ -7,13 +7,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.3mbank</groupId>
+        <groupId>com.threembank-core</groupId>
         <artifactId>parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
-    <artifactId>auth-service</artifactId>
+    <groupId>com.threembank</groupId>
+    <artifactId>auth</artifactId>
     <name>3mbank Authentication</name>
     <description>Auth Service for 3M Bank - JWT, Authentication and Authorization</description>
     <version>1.0.0-SNAPSHOT</version>

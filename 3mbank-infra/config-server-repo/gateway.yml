@@ -1,0 +1,63 @@
+configurations:
+  app:
+    name: gateway
+    port: 8080
+    context: /
+server:
+  port: ${configurations.app.port}
+  servlet:
+    context-path: ${configurations.app.context}
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          discovery:
+            locator:
+              lower-case-service-id: true
+              enabled: true
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                allowCredentials: ${configurations.security.cors.allow-credentials}
+                max-age: ${configurations.security.cors.max-age}
+                allowedOrigins: ${configurations.security.cors.allowed-origins}
+                allowedHeaders: ${configurations.security.cors.allowed-headers}
+                exposedHeaders: ${configurations.security.cors.exposed-headers}
+          default-filters:
+            - name: CircuitBreaker
+              args:
+                name: defaultCircuitBreaker
+
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5  # 5 requisições por segundo
+                redis-rate-limiter.burstCapacity: 10 # capacidade de burst
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
+
+  # Configuração do comportamento do Circuit Breaker
+  resilience4j.circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 20      # Analisa as últimas 20 chamadas
+        failureRateThreshold: 50   # Abre se 50% delas falharem
+        waitDurationInOpenState: 10s # Fica aberto por 10s antes de tentar de novo
+        permittedNumberOfCallsInHalfOpenState: 5
+
+  # Configura um timeout para as chamadas
+  resilience4j.timelimiter:
+    configs:
+      default:
+        timeout-duration:
+          seconds: 4
+
+
